@@ -1,14 +1,14 @@
 package org.gravitytwog.parser.nodes;
 
 public class RequireStatement extends Node {
-    protected String modulePath;
+    protected String moduleName;
 
-    public RequireStatement(String content, String modulePath) {
+    public RequireStatement(String content, String moduleName) {
         super(content);
-        this.modulePath = modulePath;
+        this.moduleName = moduleName;
     }
 
-    public String getModulePath() {
-        return modulePath;
+    public String getModuleName() {
+        return moduleName;
     }
 }

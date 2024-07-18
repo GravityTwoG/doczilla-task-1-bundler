@@ -1,7 +1,5 @@
 package org.gravitytwog.parser;
 
-import org.gravitytwog.parser.nodes.CommonLine;
-import org.gravitytwog.parser.nodes.Node;
 import org.gravitytwog.parser.nodes.RequireStatement;
 
 import java.io.BufferedReader;
@@ -12,20 +10,18 @@ public class ModuleParser {
     protected RequireStatementParser requireStatementParser = new RequireStatementParser();
 
     public Module parse(String moduleName, BufferedReader input) throws IOException {
-        ArrayList<Node> nodes = new ArrayList<>();
+        ArrayList<String> dependencies = new ArrayList<>();
 
         String line = input.readLine();
         while (line != null) {
             RequireStatement requireStatement = requireStatementParser.parse(line);
             if (requireStatement != null) {
-                nodes.add(requireStatement);
-            } else {
-                nodes.add(new CommonLine(line));
+                dependencies.add(requireStatement.getModuleName());
             }
 
             line = input.readLine();
         }
 
-        return new Module(moduleName, nodes);
+        return new Module(moduleName, dependencies);
     }
 }

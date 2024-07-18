@@ -2,8 +2,6 @@ package org.gravitytwog;
 
 import org.gravitytwog.parser.Module;
 import org.gravitytwog.parser.ModuleParser;
-import org.gravitytwog.parser.nodes.CommonLine;
-import org.gravitytwog.parser.nodes.RequireStatement;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -13,14 +11,27 @@ import java.util.*;
 import java.util.stream.Stream;
 
 public class Bundler {
-    protected List<Module> modules = new ArrayList<>();
+    protected String rootPath;
 
-    public void loadModules(String root) throws Exception {
+    protected List<Module> modules;
+    // outbound dependencies of module
+    private final HashMap<Module, Set<Module>> outbound;
+    // inbound dependents of module
+    private final Map<Module, Set<Module>> inbound;
+
+    public Bundler(String rootPath) {
+        this.rootPath = rootPath;
+        this.modules = new ArrayList<>();
+        this.outbound = new HashMap<>();
+        this.inbound = new HashMap<>();
+    }
+
+    public void loadModules() throws Exception {
         this.modules.clear();
 
         ModuleParser moduleParser = new ModuleParser();
 
-        Path rootPath = Paths.get(root);
+        Path rootPath = Paths.get(this.rootPath);
         try (Stream<Path> stream = Files.walk(rootPath)) {
             stream
                 .filter(Files::isRegularFile)
@@ -42,27 +53,25 @@ public class Bundler {
 
     // Kahn's Algorithm
     private void sortModules() throws Exception {
-        Map<Module, Set<Module>> outbound = this.buildOutboundDependenciesGraph();
-        Map<Module, Set<Module>> inbound = this.buildInboundDependenciesGraph(outbound);
+        this.buildDependencyGraphs();
 
         List<Module> result = new ArrayList<>();
 
-        while (!inbound.isEmpty()) {
-            Boolean independentModuleFound = false;
+        while (!this.inbound.isEmpty()) {
+            boolean independentModuleFound = false;
 
-            for (Map.Entry<Module, Set<Module>> entry : inbound.entrySet()) {
+            for (Map.Entry<Module, Set<Module>> entry : this.inbound.entrySet()) {
                 var dependents = entry.getValue();
                 if (dependents.isEmpty()) {
-                    var dependency = entry.getKey();
+                    var module = entry.getKey();
                     // add module without dependents
-                    result.add(dependency);
+                    result.add(module);
 
-                    // remove this module from inbound dependencies graph
-                    for (Module outboundDependency : outbound.get(dependency)) {
-                        inbound.get(outboundDependency).remove(dependency);
+                    // remove this module from inbound dependents graph
+                    this.inbound.remove(module);
+                    for (Module dependency : this.outbound.get(module)) {
+                        this.inbound.get(dependency).remove(module);
                     }
-
-                    inbound.remove(dependency);
 
                     independentModuleFound = true;
 
@@ -73,7 +82,7 @@ public class Bundler {
 
             if (!independentModuleFound) {
                 List<String> moduleNames = new ArrayList<>();
-                inbound.keySet().forEach(module -> moduleNames.add(module.getName() + ", "));
+                this.inbound.keySet().forEach(module -> moduleNames.add(module.getName() + ", "));
                 throw new Exception("Cycle found: " + moduleNames);
             }
         }
@@ -81,43 +90,32 @@ public class Bundler {
         this.modules = result.reversed();
     }
 
-    private Map<Module, Set<Module>> buildOutboundDependenciesGraph() {
+    private void buildDependencyGraphs() {
         Map<String, Module> map = new HashMap<>();
-        Map<Module, Set<Module>> graph = new HashMap<>();
+        this.outbound.clear();
+        this.inbound.clear();
 
-        for (Module dependent : this.modules) {
-            map.put(dependent.getName(), dependent);
-            graph.put(dependent, new HashSet<>());
-        }
-
-        for (Module dependent : this.modules) {
-            Set<Module> dependencies = graph.get(dependent);
-
-            for (RequireStatement requireStatement : dependent.getRequires()) {
-                Module dependency = map.get(requireStatement.getModulePath());
-                dependencies.add(dependency);
-            }
-        }
-
-        return graph;
-    }
-
-    private Map<Module, Set<Module>> buildInboundDependenciesGraph(Map<Module, Set<Module>> outbound) {
-        Map<Module, Set<Module>> inbound = new HashMap<>();
-
-        for (Module dependency : this.modules) {
-            inbound.put(dependency, new HashSet<>());
+        for (Module module : this.modules) {
+            map.put(module.getName(), module);
+            outbound.put(module, new HashSet<>());
+            inbound.put(module, new HashSet<>());
         }
 
         for (Module dependent : this.modules) {
             Set<Module> dependencies = outbound.get(dependent);
 
+            // add dependencies of module to outbound dependencies
+            for (String dependencyName : dependent.getDependencies()) {
+                Module dependency = map.get(dependencyName);
+                dependencies.add(dependency);
+            }
+
+            // add module to inbound dependents
             for (Module dependency : dependencies) {
                 var dependents = inbound.get(dependency);
                 dependents.add(dependent);
             }
         }
-        return inbound;
     }
 
     public void bundle(String path) throws IOException {
@@ -129,19 +127,23 @@ public class Bundler {
     }
 
     private void writeModule(Module module, BufferedWriter writer) throws IOException {
-        for (var node : module.getNodes()) {
-            if (node instanceof CommonLine) {
-                writer.write(node.getContent());
-                writer.newLine();
-            }
+        try (Stream<String> lines = Files.lines(Paths.get(rootPath).resolve(module.getName()))) {
+            lines.forEach(line -> {
+                try {
+                    writer.write(line);
+                    writer.newLine();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         }
     }
 
     public void listModules() {
         for (Module module : this.modules) {
             System.out.print(module.getName() + " => ");
-            for (RequireStatement requireStatement : module.getRequires()) {
-                System.out.print(requireStatement.getModulePath() + ", ");
+            for (String dependencyName : module.getDependencies()) {
+                System.out.print(dependencyName + ", ");
             }
             System.out.println();
         }

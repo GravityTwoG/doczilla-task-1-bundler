@@ -1,14 +1,12 @@
 package org.gravitytwog;
 
-import java.io.IOException;
-
 public class Main {
     public static void main(String[] args) throws Exception {
-        String root = "./examples/";
+        String rootPath = "./examples/";
         String result = "./result.txt";
 
-        Bundler bundler = new Bundler();
-        bundler.loadModules(root);
+        Bundler bundler = new Bundler(rootPath);
+        bundler.loadModules();
         bundler.listModules();
         bundler.bundle(result);
 

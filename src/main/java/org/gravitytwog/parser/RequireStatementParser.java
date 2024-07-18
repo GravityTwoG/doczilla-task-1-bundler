@@ -3,6 +3,8 @@ package org.gravitytwog.parser;
 import org.gravitytwog.parser.nodes.RequireStatement;
 
 public class RequireStatementParser implements NodeParser {
+    // Parses and returns RequireStatement.
+    // Returns null if there is no RequireStatement.
     @Override
     public RequireStatement parse(String line) {
         if (!line.startsWith("require")) {
@@ -10,6 +12,10 @@ public class RequireStatementParser implements NodeParser {
         }
 
         String rest = line.substring(8).trim();
+
+        if (!rest.startsWith("'") || !rest.endsWith("'")) {
+            return null;
+        }
 
         return new RequireStatement(line, rest.substring(1, rest.length() - 1));
     }
