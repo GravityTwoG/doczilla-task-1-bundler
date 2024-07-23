@@ -1,8 +1,6 @@
 package org.gravitytwog.bundler;
 
 import org.gravitytwog.bundler.sorters.GraphSorter;
-import org.gravitytwog.bundler.sorters.KahnGraphSorter;
-import org.gravitytwog.bundler.sorters.TarjanGraphSorter;
 import org.gravitytwog.parser.Module;
 import org.gravitytwog.parser.ModuleParser;
 
