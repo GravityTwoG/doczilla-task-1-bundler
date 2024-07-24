@@ -4,7 +4,9 @@ import org.gravitytwog.bundler.CycleFoundException;
 import org.gravitytwog.parser.Module;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public interface GraphSorter {
-    List<Module> sort(List<Module> modules) throws CycleFoundException;
+    List<Module> sort(Map<Module, Set<Module>> graph) throws CycleFoundException;
 }

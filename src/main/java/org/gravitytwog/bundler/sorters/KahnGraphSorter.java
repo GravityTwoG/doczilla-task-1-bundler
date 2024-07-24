@@ -16,8 +16,8 @@ public class KahnGraphSorter implements GraphSorter {
 
     // Kahn's Algorithm
     @Override
-    public List<Module> sort(List<Module> modules) throws CycleFoundException {
-        this.buildDependencyGraphs(modules);
+    public List<Module> sort(Map<Module, Set<Module>> graph) throws CycleFoundException {
+        this.buildInboundDependenciesGraph(graph);
 
         List<Module> result = new ArrayList<>();
 
@@ -54,26 +54,17 @@ public class KahnGraphSorter implements GraphSorter {
         return result.reversed();
     }
 
-    private void buildDependencyGraphs(List<Module> modules) {
+    private void buildInboundDependenciesGraph(Map<Module, Set<Module>> graph) {
         this.outbound.clear();
+        this.outbound.putAll(graph);
         this.inbound.clear();
 
-        Map<String, Module> map = new HashMap<>();
-
-        for (Module module : modules) {
-            map.put(module.getName(), module);
-            outbound.put(module, new HashSet<>());
+        for (Module module : graph.keySet()) {
             inbound.put(module, new HashSet<>());
         }
 
-        for (Module dependent : modules) {
+        for (Module dependent : graph.keySet()) {
             Set<Module> dependencies = outbound.get(dependent);
-
-            // add dependencies of module to outbound dependencies
-            for (String dependencyName : dependent.getDependencies()) {
-                Module dependency = map.get(dependencyName);
-                dependencies.add(dependency);
-            }
 
             // add module to inbound dependents
             for (Module dependency : dependencies) {

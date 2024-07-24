@@ -16,7 +16,7 @@ public class TarjanGraphSorter implements GraphSorter {
     private final Map<Module, Integer> indexes;
     private final Map<Module, Integer> lowLinks;
 
-    private final List<List<Module>> strongConnections;
+    private final List<List<Module>> strongConnectionComponents;
 
     public TarjanGraphSorter() {
         this.graph = new HashMap<>();
@@ -25,17 +25,18 @@ public class TarjanGraphSorter implements GraphSorter {
         this.onStack = new HashSet<>();
         this.indexes = new HashMap<>();
         this.lowLinks = new HashMap<>();
-        this.strongConnections = new ArrayList<>();
+        this.strongConnectionComponents = new ArrayList<>();
     }
 
     @Override
-    public List<Module> sort(List<Module> modules) throws CycleFoundException {
+    public List<Module> sort(Map<Module, Set<Module>> graph) throws CycleFoundException {
         this.reset();
+        this.graph.putAll(graph);
 
-        this.findSCCs(modules);
+        this.findSCCs();
 
         List<Module> nodesInCycles = new ArrayList<>();
-        for (List<Module> strongConnection : this.strongConnections) {
+        for (List<Module> strongConnection : this.strongConnectionComponents) {
             if (strongConnection.size() > 1) {
                 nodesInCycles.addAll(strongConnection);
                 throw  new CycleFoundException(nodesInCycles);
@@ -43,7 +44,7 @@ public class TarjanGraphSorter implements GraphSorter {
         }
 
         List<Module> sorted = new ArrayList<>();
-        for (List<Module> scc : this.strongConnections) {
+        for (List<Module> scc : this.strongConnectionComponents) {
             sorted.addAll(scc);
         }
 
@@ -57,12 +58,10 @@ public class TarjanGraphSorter implements GraphSorter {
         this.onStack.clear();
         this.indexes.clear();
         this.lowLinks.clear();
-        this.strongConnections.clear();
+        this.strongConnectionComponents.clear();
     }
 
-    public void findSCCs(List<Module> modules) {
-        this.buildDependencyGraph(modules);
-
+    public void findSCCs() {
         for (var v : this.graph.keySet()) {
             if (!this.indexes.containsKey(v)) {
                 this.findStrongConnection(v);
@@ -80,7 +79,7 @@ public class TarjanGraphSorter implements GraphSorter {
         if (this.graph.containsKey(v)) {
             for (var w : this.graph.get(v)) {
                 if (!this.indexes.containsKey(w)) {
-                    findStrongConnection(w);
+                    this.findStrongConnection(w);
                     this.lowLinks.put(v, Math.min(this.lowLinks.get(v), this.lowLinks.get(w)));
                 } else if (onStack.contains(w)) {
                     this.lowLinks.put(v, Math.min(this.lowLinks.get(v), this.indexes.get(w)));
@@ -89,32 +88,14 @@ public class TarjanGraphSorter implements GraphSorter {
         }
 
         if (this.lowLinks.get(v).equals(this.indexes.get(v))) {
-            List<Module> scc = new ArrayList<>();
+            List<Module> strongConnectionComponent = new ArrayList<>();
             Module w;
             do {
                 w = this.stack.pop();
                 this.onStack.remove(w);
-                scc.add(w);
+                strongConnectionComponent.add(w);
             } while (w != v);
-            this.strongConnections.add(scc);
-        }
-    }
-
-    private void buildDependencyGraph(List<Module> modules) {
-        Map<String, Module> map = new HashMap<>();
-
-        for (Module module : modules) {
-            map.put(module.getName(), module);
-            this.graph.put(module, new HashSet<>());
-        }
-
-        for (Module dependent : modules) {
-            Set<Module> dependencies = this.graph.get(dependent);
-
-            for (String dependencyName : dependent.getDependencies()) {
-                Module dependency = map.get(dependencyName);
-                dependencies.add(dependency);
-            }
+            this.strongConnectionComponents.add(strongConnectionComponent);
         }
     }
 }

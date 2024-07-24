@@ -45,8 +45,35 @@ public class Bundler {
                     }
                 });
 
-            this.modules = this.sorter.sort(this.modules);
+            var graph = this.buildDependencyGraph();
+            this.modules = this.sorter.sort(graph);
         }
+    }
+
+    private Map<Module, Set<Module>> buildDependencyGraph() throws ModuleNotFoundException {
+        Map<String, Module> map = new HashMap<>();
+        Map<Module, Set<Module>> graph = new HashMap<>();
+
+        for (Module module : modules) {
+            map.put(module.getName(), module);
+            graph.put(module, new HashSet<>());
+        }
+
+        for (Module dependent : modules) {
+            Set<Module> dependencies = graph.get(dependent);
+
+            for (String dependencyName : dependent.getDependencies()) {
+                Module dependency = map.get(dependencyName);
+
+                if (dependency == null) {
+                    throw new ModuleNotFoundException("Module ["+dependencyName+"] not found");
+                }
+
+                dependencies.add(dependency);
+            }
+        }
+
+        return graph;
     }
 
     public void bundle(String path) throws IOException {

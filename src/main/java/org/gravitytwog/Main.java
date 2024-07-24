@@ -14,7 +14,6 @@ public class Main {
         String rootPath = args[0];
         String result = args[1];
 
-//        GraphSorter kahnSorter = new KahnGraphSorter();
         GraphSorter tarjanSorter = new TarjanGraphSorter();
 
         Bundler bundler = new Bundler(rootPath, tarjanSorter);
